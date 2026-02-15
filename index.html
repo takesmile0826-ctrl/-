@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3人麻雀スコア管理 (クラウド同期版)</title>
+    <title>3人麻雀スコア管理</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
             --surface-color: #2d2d2d;
-            --header-bg: #2e7d32;
+            --header-bg: #2e7d32; /* 深めの緑 */
             --header-text: #ffffff;
             --text-main: #f0f0f0;
             --text-sub: #a0a0a0;
@@ -17,6 +17,7 @@
             --border-color: #404040;
             --input-bg: #333333;
             --auto-fill-bg: rgba(76, 175, 80, 0.15);
+            --focus-glow: rgba(76, 175, 80, 0.4);
         }
 
         * {
@@ -27,12 +28,15 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* 数値入力のスピンボタン除去 */
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
-        input[type="number"] { -moz-appearance: textfield; }
+        input[type="number"] {
+            -moz-appearance: textfield;
+        }
 
         body {
             background-color: #000;
@@ -54,6 +58,7 @@
             box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
+        /* ヘッダーエリア */
         header {
             background: linear-gradient(180deg, #388e3c 0%, #2e7d32 100%);
             padding: 12px 16px;
@@ -70,33 +75,37 @@
             margin-bottom: 12px;
         }
 
+        /* 場所入力のデザイン改善 */
+        .place-input-wrapper {
+            position: relative;
+            width: 40%;
+        }
+        
         .place-input {
             background: rgba(255, 255, 255, 0.15);
             border: 1px solid rgba(255,255,255,0.1);
             border-radius: 6px;
             color: #fff;
             font-size: 13px;
-            width: 120px;
+            width: 100%;
             padding: 6px 10px;
+            transition: all 0.2s;
         }
-        .place-input::placeholder { color: rgba(255,255,255,0.6); }
-        .place-input:focus { outline: none; background: rgba(255, 255, 255, 0.25); }
+        .place-input::placeholder {
+            color: rgba(255,255,255,0.6);
+        }
+        .place-input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.25);
+            border-color: rgba(255,255,255,0.4);
+        }
 
-        .header-info-right {
-            display: flex;
-            align-items: center;
-            gap: 12px;
+        .date-display {
+            font-size: 13px;
+            font-weight: 500;
+            opacity: 0.9;
+            letter-spacing: 0.5px;
         }
-
-        .sync-status {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background-color: #666;
-            transition: background-color 0.3s;
-        }
-        .sync-status.online { background-color: #4caf50; box-shadow: 0 0 8px #4caf50; }
-        .sync-status.offline { background-color: #f44336; }
 
         .settings-icon {
             font-size: 20px;
@@ -109,8 +118,13 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: background 0.2s;
+        }
+        .settings-icon:active {
+            background: rgba(255,255,255,0.3);
         }
 
+        /* ネット合計表示 */
         .summary-bar {
             display: flex;
             justify-content: space-between;
@@ -135,6 +149,7 @@
             letter-spacing: 1px;
         }
 
+        /* プレイヤーヘッダー */
         .player-headers {
             display: grid;
             grid-template-columns: 40px 1fr 1fr 1fr;
@@ -174,9 +189,14 @@
             width: 100%;
             padding: 2px 0;
             font-weight: 600;
+            transition: border-color 0.2s;
         }
-        .name-input:focus { outline: none; border-bottom-color: var(--accent-green); }
+        .name-input:focus {
+            outline: none;
+            border-bottom-color: var(--accent-green);
+        }
 
+        /* スコアテーブル */
         .score-table {
             flex: 1;
             overflow-y: auto;
@@ -188,9 +208,11 @@
             display: grid;
             grid-template-columns: 40px 1fr 1fr 1fr;
             border-bottom: 1px solid var(--border-color);
-            height: 50px;
+            height: 50px; /* タップしやすい高さ */
         }
-        .score-row:nth-child(even) { background-color: rgba(255,255,255,0.02); }
+        .score-row:nth-child(even) {
+            background-color: rgba(255,255,255,0.02);
+        }
 
         .row-num {
             display: flex;
@@ -208,24 +230,6 @@
         }
         .score-input-cell:last-child { border-right: none; }
 
-        /* 順位アイコン（王冠） */
-        .rank-crown {
-            position: absolute;
-            top: 2px;
-            right: 2px;
-            font-size: 12px;
-            color: gold;
-            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
-            pointer-events: none;
-            display: none; /* デフォルト非表示 */
-            z-index: 5;
-        }
-        /* トップ判定時に表示 */
-        .score-input-cell.is-top .rank-crown {
-            display: block;
-            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
         .score-input {
             width: 100%;
             height: 100%;
@@ -242,17 +246,17 @@
             background-color: rgba(76, 175, 80, 0.1);
             box-shadow: inset 0 0 0 2px var(--accent-green);
         }
-        .score-input::placeholder { color: #444; font-size: 14px; }
-        
-        /* リアルタイム色分け */
-        .score-input.plus { color: var(--accent-green); font-weight: 700; }
-        .score-input.minus { color: var(--accent-red); font-weight: 700; }
-        
+        .score-input::placeholder {
+            color: #444;
+            font-size: 14px;
+        }
         .score-input.auto-filled {
+            color: #81c784;
             background-color: var(--auto-fill-bg);
             font-style: italic;
         }
 
+        /* 合計行（スティッキー） */
         .total-row {
             display: grid;
             grid-template-columns: 40px 1fr 1fr 1fr;
@@ -286,11 +290,12 @@
         .total-value.plus { color: var(--accent-green); }
         .total-value.minus { color: var(--accent-red); }
 
+        /* フッター */
         footer {
             padding: 12px 16px;
             background-color: #111;
             flex-shrink: 0;
-            padding-bottom: max(12px, env(safe-area-inset-bottom));
+            padding-bottom: max(12px, env(safe-area-inset-bottom)); /* iPhone X対策 */
         }
 
         .footer-btn {
@@ -301,7 +306,7 @@
             font-size: 16px;
             font-weight: 700;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
             background-color: #333;
             color: #777;
             display: flex;
@@ -314,8 +319,14 @@
             background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%);
             color: white;
             box-shadow: 0 4px 12px rgba(46, 125, 50, 0.4);
+            transform: translateY(-1px);
+        }
+        .footer-btn.active:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 6px rgba(46, 125, 50, 0.3);
         }
 
+        /* モーダル共通 */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -328,6 +339,12 @@
             justify-content: center;
             align-items: center;
             z-index: 100;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
 
         .modal {
@@ -341,9 +358,19 @@
             max-height: 80vh;
             overflow-y: auto;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .modal h3 { margin-bottom: 20px; font-size: 18px; color: #fff; }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .modal h3 {
+            margin-bottom: 20px;
+            font-size: 18px;
+            color: #fff;
+        }
 
         .setting-item {
             display: flex;
@@ -355,9 +382,12 @@
             border-radius: 8px;
         }
 
-        .setting-item label { font-size: 13px; color: var(--text-sub); }
+        .setting-item label {
+            font-size: 13px;
+            color: var(--text-sub);
+        }
 
-        .setting-input-small, .room-input {
+        .setting-input-small {
             width: 70px;
             background: #333;
             border: 1px solid #555;
@@ -367,8 +397,6 @@
             border-radius: 6px;
             font-weight: bold;
         }
-        
-        .room-input { width: 120px; text-align: left; }
 
         .close-btn {
             margin-top: 20px;
@@ -382,6 +410,74 @@
             cursor: pointer;
         }
 
+        /* 履歴リストデザイン */
+        .history-section {
+            text-align: left;
+            margin-top: 20px;
+            border-top: 1px solid #444;
+            padding-top: 15px;
+        }
+        
+        .history-card {
+            background: #2e2e2e;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 3px solid var(--accent-green);
+        }
+        
+        .history-meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 6px;
+        }
+        
+        .history-place {
+            color: var(--accent-green);
+            font-weight: bold;
+        }
+
+        .history-summary {
+            font-size: 13px;
+            color: #ddd;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+
+        .history-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .action-btn {
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 4px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .btn-edit { background: #444; color: #ccc; }
+        .btn-delete { background: rgba(239, 83, 80, 0.2); color: #ef5350; }
+
+        /* 確認モーダル */
+        .confirm-btn {
+            padding: 12px;
+            border-radius: 8px;
+            border: none;
+            font-weight: bold;
+            flex: 1;
+            cursor: pointer;
+        }
+        .btn-yes { background: var(--accent-red); color: white; }
+        .btn-no { background: #444; color: white; }
+        .confirm-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+        /* 結果モーダル */
         .result-item {
             display: flex;
             justify-content: space-between;
@@ -416,18 +512,19 @@
 </head>
 <body>
 
-<div id="saving-toast">✅ 保存完了</div>
+<div id="saving-toast">✅ 保存しました</div>
 
 <div class="app-container">
     <header>
         <div class="header-top">
-            <input type="text" id="gamePlace" class="place-input" placeholder="場所を入力" onchange="debouncedSync()">
+            <div class="place-input-wrapper">
+                <input type="text" id="gamePlace" class="place-input" placeholder="場所を入力">
+            </div>
             
-            <div class="header-info-right">
-                <div id="syncStatus" class="sync-status offline"></div>
-                <div class="settings-icon" onclick="toggleSettings()">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                </div>
+            <div class="date-display" id="currentDate"></div>
+            
+            <div class="settings-icon" onclick="toggleSettings()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
             </div>
         </div>
         
@@ -443,23 +540,25 @@
             <div class="player-icon" style="background-color: #43a047;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             </div>
-            <input type="text" class="name-input" value="かんばし" id="pName-0" onchange="debouncedSync()">
+            <input type="text" class="name-input" value="かんばし" id="pName-0" onchange="saveConfig()">
         </div>
         <div class="player-info">
             <div class="player-icon" style="background-color: #1e88e5;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             </div>
-            <input type="text" class="name-input" value="ゲスト1" id="pName-1" onchange="debouncedSync()">
+            <input type="text" class="name-input" value="ゲスト1" id="pName-1" onchange="saveConfig()">
         </div>
         <div class="player-info">
             <div class="player-icon" style="background-color: #fb8c00;">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             </div>
-            <input type="text" class="name-input" value="ゲスト2" id="pName-2" onchange="debouncedSync()">
+            <input type="text" class="name-input" value="ゲスト2" id="pName-2" onchange="saveConfig()">
         </div>
     </div>
 
-    <div class="score-table" id="scoreTable"></div>
+    <div class="score-table" id="scoreTable">
+        <!-- JS generates rows -->
+    </div>
 
     <div class="total-row">
         <div class="total-label">計</div>
@@ -478,33 +577,36 @@
 <!-- 設定モーダル -->
 <div class="modal-overlay" id="settingsModal">
     <div class="modal">
-        <h3>設定・共有</h3>
+        <h3>設定・履歴</h3>
         
-        <div class="setting-item" style="border: 1px solid var(--accent-green); background: rgba(76, 175, 80, 0.1);">
-            <label style="color:var(--accent-green); font-weight:bold;">共有ID (合言葉)</label>
-            <input type="text" id="roomId" class="room-input" value="my-room" onchange="changeRoom()">
-        </div>
-
         <div class="setting-item">
             <label>ウマ (1位 / 2位 / 3位)</label>
             <div style="display:flex; gap:4px;">
-                <input type="number" id="uma1" class="setting-input-small" style="width:50px" value="20" onchange="debouncedSync()">
-                <input type="number" id="uma2" class="setting-input-small" style="width:50px" value="0" onchange="debouncedSync()">
-                <input type="number" id="uma3" class="setting-input-small" style="width:50px" value="-20" onchange="debouncedSync()">
+                <input type="number" id="uma1" class="setting-input-small" style="width:50px" value="20" onchange="saveConfig()">
+                <input type="number" id="uma2" class="setting-input-small" style="width:50px" value="0" onchange="saveConfig()">
+                <input type="number" id="uma3" class="setting-input-small" style="width:50px" value="-20" onchange="saveConfig()">
             </div>
         </div>
         
         <div class="setting-item">
             <label>オカ (トップ賞)</label>
-            <input type="number" id="okaVal" class="setting-input-small" value="15" onchange="debouncedSync()">
+            <input type="number" id="okaVal" class="setting-input-small" value="15" onchange="saveConfig()">
         </div>
         
         <div class="setting-item">
             <label>持ち点 / 返し点</label>
             <div style="display:flex; gap:4px;">
-                <input type="number" id="startPt" class="setting-input-small" style="width:70px" value="35000" oninput="debouncedSync();updateSummary()">
-                <input type="number" id="returnPt" class="setting-input-small" style="width:70px" value="40000" oninput="debouncedSync();updateSummary()">
+                <input type="number" id="startPt" class="setting-input-small" style="width:70px" value="35000" oninput="updateSummary()" onchange="saveConfig()">
+                <input type="number" id="returnPt" class="setting-input-small" style="width:70px" value="40000" oninput="updateSummary()" onchange="saveConfig()">
             </div>
+        </div>
+        
+        <div class="history-section">
+            <p style="font-size:12px; font-weight:bold; margin-bottom:12px; color:var(--text-sub); display:flex; align-items:center; gap:6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                端末内の履歴
+            </p>
+            <div id="historyList">読み込み中...</div>
         </div>
         
         <button class="close-btn" onclick="toggleSettings()">閉じる</button>
@@ -520,42 +622,27 @@
     </div>
 </div>
 
-<script type="module">
-    // -------------------------------------------------------------------------
-    // ★重要★ Firebaseの設定
-    // GitHub等で公開し、3人で共有するには、Firebaseプロジェクトの作成が必要です。
-    // -------------------------------------------------------------------------
-    const firebaseConfig = {
-        apiKey: "ここにAPIキーを貼り付け",
-        authDomain: "projectId.firebaseapp.com",
-        projectId: "projectId",
-        storageBucket: "projectId.firebasestorage.app",
-        messagingSenderId: "senderId",
-        appId: "appId"
-    };
+<!-- 確認モーダル -->
+<div class="modal-overlay" id="confirmModal">
+    <div class="modal" style="max-width: 320px;">
+        <h3 id="confirmTitle" style="font-size:16px; margin-bottom:15px;">確認</h3>
+        <p id="confirmMsg" style="font-size:14px; color:#ccc; line-height:1.5;">実行しますか？</p>
+        <div class="confirm-actions">
+            <button class="confirm-btn btn-no" onclick="closeConfirm(false)">キャンセル</button>
+            <button class="confirm-btn btn-yes" onclick="closeConfirm(true)">実行</button>
+        </div>
+    </div>
+</div>
 
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-    // --- Firebase Initialization ---
-    let db;
-    let unsubscribe = null;
-    let isRemoteUpdate = false; 
-
-    try {
-        if (firebaseConfig.apiKey !== "ここにAPIキーを貼り付け") {
-            const app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-        }
-    } catch (e) {
-        console.error("Firebase init failed:", e);
-    }
+<script>
+    // --- Global State ---
+    let currentEditId = null;
+    let pendingAction = null;
 
     const scoreTable = document.getElementById('scoreTable');
     const rowCount = 30;
-    let syncTimeout = null;
 
-    // --- UI Generation ---
+    // --- Core Functions ---
     const generateTable = () => {
         scoreTable.innerHTML = '';
         for (let i = 1; i <= rowCount; i++) {
@@ -563,25 +650,28 @@
             row.className = 'score-row';
             row.innerHTML = `
                 <div class="row-num">${i}</div>
-                <div class="score-input-cell">
-                    <span class="rank-crown">👑</span>
-                    <input type="number" class="score-input" data-player="0" oninput="handleInput(this)" placeholder="-">
-                </div>
-                <div class="score-input-cell">
-                    <span class="rank-crown">👑</span>
-                    <input type="number" class="score-input" data-player="1" oninput="handleInput(this)" placeholder="-">
-                </div>
-                <div class="score-input-cell">
-                    <span class="rank-crown">👑</span>
-                    <input type="number" class="score-input" data-player="2" oninput="handleInput(this)" placeholder="-">
-                </div>
+                <div class="score-input-cell"><input type="number" class="score-input" data-player="0" oninput="handleInput(this)" placeholder="-"></div>
+                <div class="score-input-cell"><input type="number" class="score-input" data-player="1" oninput="handleInput(this)" placeholder="-"></div>
+                <div class="score-input-cell"><input type="number" class="score-input" data-player="2" oninput="handleInput(this)" placeholder="-"></div>
             `;
             scoreTable.appendChild(row);
         }
     };
 
+    const updateDate = () => {
+        const now = new Date();
+        const d = now.getDate();
+        const m = now.getMonth() + 1;
+        const y = now.getFullYear();
+        const days = ['日','月','火','水','木','金','土'];
+        const day = days[now.getDay()];
+        const str = `${y}.${m}.${d}(${day})`;
+        document.getElementById('currentDate').textContent = str;
+        return str;
+    };
+
     // --- Logic ---
-    window.handleInput = (el) => {
+    function handleInput(el) {
         const row = el.closest('.score-row');
         const inputs = Array.from(row.querySelectorAll('.score-input'));
         
@@ -603,44 +693,7 @@
                 }
             });
         }
-        
-        // 色分けとアイコン更新
-        updateRowVisuals(row);
         calculate();
-        debouncedSync(); 
-    };
-
-    function updateRowVisuals(row) {
-        const inputs = Array.from(row.querySelectorAll('.score-input'));
-        const cells = Array.from(row.querySelectorAll('.score-input-cell'));
-        
-        let maxVal = -Infinity;
-        let hasValue = false;
-        
-        // 1. 色分けと最大値探索
-        inputs.forEach(input => {
-            const val = parseFloat(input.value);
-            
-            // クラスリセット
-            input.classList.remove('plus', 'minus');
-            
-            if (!isNaN(val)) {
-                hasValue = true;
-                if (val > 0) input.classList.add('plus');
-                if (val < 0) input.classList.add('minus');
-                
-                if (val > maxVal) maxVal = val;
-            }
-        });
-
-        // 2. 王冠表示 (値が一つでもあり、かつその値が最大値の場合)
-        cells.forEach((cell, idx) => {
-            cell.classList.remove('is-top');
-            const val = parseFloat(inputs[idx].value);
-            if (hasValue && !isNaN(val) && val === maxVal) {
-                cell.classList.add('is-top');
-            }
-        });
     }
 
     function calculate() {
@@ -665,6 +718,7 @@
             `${totals[0]} <span style="color:#555">/</span> ${totals[1]} <span style="color:#555">/</span> ${totals[2]}`;
         
         const endBtn = document.getElementById('endBtn');
+        
         if (hasAnyInput) {
             endBtn.classList.add('active');
             endBtn.disabled = false;
@@ -675,143 +729,88 @@
         return totals;
     }
 
-    // --- Firebase Sync Logic ---
-    window.debouncedSync = () => {
-        if (isRemoteUpdate) return;
-        if (syncTimeout) clearTimeout(syncTimeout);
-        syncTimeout = setTimeout(saveToFirebase, 500); 
-    };
+    // --- History ---
+    function getHistory() {
+        const str = localStorage.getItem('sanma_history_v5');
+        return str ? JSON.parse(str) : [];
+    }
 
-    window.changeRoom = () => {
-        const roomId = document.getElementById('roomId').value || "my-room";
-        localStorage.setItem('sanma_room_id', roomId);
-        startSync(roomId);
-    };
-
-    function startSync(roomId) {
-        if (!db) return;
-        if (unsubscribe) unsubscribe(); 
-        
-        const docRef = doc(db, "rooms", roomId);
-        const statusEl = document.getElementById('syncStatus');
-
-        unsubscribe = onSnapshot(docRef, (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                isRemoteUpdate = true; 
-                applyDataToUI(data);
-                isRemoteUpdate = false; 
-                statusEl.className = 'sync-status online';
+    function saveHistoryEntry(entry) {
+        const history = getHistory();
+        if (entry.id) {
+            const idx = history.findIndex(h => h.id === entry.id);
+            if (idx >= 0) {
+                history[idx] = entry;
             } else {
-                saveToFirebase();
+                history.unshift(entry);
             }
-        }, (error) => {
-            console.error("Sync Error:", error);
-            statusEl.className = 'sync-status offline';
-        });
+        } else {
+            entry.id = Date.now().toString();
+            history.unshift(entry);
+        }
+        localStorage.setItem('sanma_history_v5', JSON.stringify(history));
+        renderHistoryList();
     }
 
-    async function saveToFirebase() {
-        if (!db) return;
-        const roomId = document.getElementById('roomId').value || "my-room";
-        
-        const scores = Array.from(document.querySelectorAll('.score-input')).map(i => i.value);
-        const autoFills = Array.from(document.querySelectorAll('.score-input')).map(i => i.classList.contains('auto-filled'));
-        
-        const data = {
-            place: document.getElementById('gamePlace').value,
-            names: [
-                document.getElementById('pName-0').value,
-                document.getElementById('pName-1').value,
-                document.getElementById('pName-2').value
-            ],
-            scores: scores,
-            autoFills: autoFills,
-            rules: {
-                uma: [
-                    document.getElementById('uma1').value,
-                    document.getElementById('uma2').value,
-                    document.getElementById('uma3').value
-                ],
-                oka: document.getElementById('okaVal').value,
-                startPt: document.getElementById('startPt').value,
-                returnPt: document.getElementById('returnPt').value
-            },
-            timestamp: Date.now()
-        };
-
-        try {
-            await setDoc(doc(db, "rooms", roomId), data);
-            document.getElementById('syncStatus').className = 'sync-status online';
-        } catch (e) {
-            console.error("Save Error:", e);
-            document.getElementById('syncStatus').className = 'sync-status offline';
-        }
+    function removeHistoryEntry(id) {
+        const history = getHistory().filter(h => h.id !== id);
+        localStorage.setItem('sanma_history_v5', JSON.stringify(history));
+        renderHistoryList();
     }
 
-    function applyDataToUI(data) {
-        if (data.place) document.getElementById('gamePlace').value = data.place;
-        if (data.names) {
-            document.getElementById('pName-0').value = data.names[0];
-            document.getElementById('pName-1').value = data.names[1];
-            document.getElementById('pName-2').value = data.names[2];
-        }
-        if (data.rules) {
-            document.getElementById('uma1').value = data.rules.uma[0];
-            document.getElementById('uma2').value = data.rules.uma[1];
-            document.getElementById('uma3').value = data.rules.uma[2];
-            document.getElementById('okaVal').value = data.rules.oka;
-            document.getElementById('startPt').value = data.rules.startPt;
-            document.getElementById('returnPt').value = data.rules.returnPt;
-            window.updateSummary();
+    function renderHistoryList() {
+        const history = getHistory();
+        const list = document.getElementById('historyList');
+        if (history.length === 0) {
+            list.innerHTML = '<p style="font-size:12px; color:#666; text-align:center; padding:10px;">履歴はありません</p>';
+            return;
         }
 
-        const inputs = document.querySelectorAll('.score-input');
-        if (data.scores) {
-            data.scores.forEach((val, idx) => {
-                if (inputs[idx]) {
-                    inputs[idx].value = val;
-                    if (data.autoFills && data.autoFills[idx]) {
-                        inputs[idx].classList.add('auto-filled');
-                    } else {
-                        inputs[idx].classList.remove('auto-filled');
-                    }
-                    // 行ごとのビジュアル更新
-                    if (idx % 3 === 2) { // 行の最後のセルでまとめて更新
-                         updateRowVisuals(inputs[idx].closest('.score-row'));
-                    }
-                }
-            });
-        }
-        
-        calculate();
+        list.innerHTML = history.slice(0, 20).map(item => `
+            <div class="history-card">
+                <div class="history-meta">
+                    <div>
+                        <span class="history-place">${item.place || '場所未設定'}</span>
+                        <span>${item.date}</span>
+                    </div>
+                </div>
+                <div class="history-summary">${item.summary}</div>
+                <div class="history-actions">
+                    <button class="action-btn btn-edit" onclick="askLoadRecord('${item.id}')">開く</button>
+                    <button class="action-btn btn-delete" onclick="askDeleteRecord('${item.id}')">削除</button>
+                </div>
+            </div>
+        `).join('');
     }
 
-    // --- Game Logic ---
-    window.finishGame = () => {
+    // --- Game Finish ---
+    function finishGame() {
         const totals = calculate();
         const names = [
-            document.getElementById('pName-0').value,
-            document.getElementById('pName-1').value,
-            document.getElementById('pName-2').value
+            document.getElementById('pName-0').value || "P1",
+            document.getElementById('pName-1').value || "P2",
+            document.getElementById('pName-2').value || "P3"
         ];
-        
-        const uma = [
+        const place = document.getElementById('gamePlace').value;
+
+        const rule_uma = [
             parseFloat(document.getElementById('uma1').value),
             parseFloat(document.getElementById('uma2').value),
             parseFloat(document.getElementById('uma3').value)
         ];
-        const oka = parseFloat(document.getElementById('okaVal').value);
+        const rule_oka = parseFloat(document.getElementById('okaVal').value);
 
         const indexed = totals.map((v, i) => ({ v, i, name: names[i] }));
         indexed.sort((a, b) => b.v - a.v);
 
         const final = [...totals];
-        indexed.forEach((item, rank) => final[item.i] += uma[rank]);
+        indexed.forEach((item, rank) => final[item.i] += rule_uma[rank]);
         const currentSum = final.reduce((a, b) => a + b, 0);
-        final[indexed[0].i] += (oka - currentSum);
+        final[indexed[0].i] += (rule_oka - currentSum);
 
+        const date = updateDate();
         let html = '';
+        let summaryText = '';
         indexed.forEach((item, rank) => {
             const s = final[item.i];
             html += `
@@ -822,51 +821,160 @@
                     </div>
                 </div>
             `;
+            summaryText += `${item.name}:${s > 0 ? '+' : ''}${s.toFixed(1)} `;
         });
 
         document.getElementById('resultsContent').innerHTML = html;
         document.getElementById('resultsModal').style.display = 'flex';
-        
-        const toast = document.getElementById('saving-toast');
-        toast.style.display = 'block';
-        setTimeout(() => toast.style.display = 'none', 1500);
-    };
 
-    window.confirmNewGame = async () => {
+        const rawData = Array.from(document.querySelectorAll('.score-input')).map(input => ({
+            p: input.dataset.player,
+            v: input.value,
+            a: input.classList.contains('auto-filled')
+        }));
+
+        const entry = {
+            id: currentEditId,
+            date: date,
+            place: place,
+            summary: summaryText.trim(),
+            raw: rawData,
+            names: names,
+            createdAt: Date.now()
+        };
+
+        saveHistoryEntry(entry);
+        showToast();
+    }
+
+    function confirmNewGame() {
         document.getElementById('resultsModal').style.display = 'none';
         generateTable();
         document.getElementById('gamePlace').value = "";
         calculate();
-        saveToFirebase();
-    };
+        updateDate();
+        currentEditId = null;
+    }
+
+    // --- Custom Confirm Modal ---
+    function askDeleteRecord(id) {
+        pendingAction = { type: 'delete', id: id };
+        document.getElementById('confirmTitle').textContent = "記録の削除";
+        document.getElementById('confirmMsg').textContent = "この対局記録を完全に削除しますか？";
+        document.getElementById('confirmModal').style.display = 'flex';
+    }
+
+    function askLoadRecord(id) {
+        pendingAction = { type: 'load', id: id };
+        document.getElementById('confirmTitle').textContent = "記録の呼び出し";
+        document.getElementById('confirmMsg').textContent = "現在の入力を破棄して、この記録を呼び出しますか？";
+        document.getElementById('confirmModal').style.display = 'flex';
+    }
+
+    function closeConfirm(isYes) {
+        document.getElementById('confirmModal').style.display = 'none';
+        if (!isYes || !pendingAction) return;
+
+        if (pendingAction.type === 'delete') {
+            removeHistoryEntry(pendingAction.id);
+        } else if (pendingAction.type === 'load') {
+            loadRecordActually(pendingAction.id);
+        }
+        pendingAction = null;
+    }
+
+    function loadRecordActually(id) {
+        const history = getHistory();
+        const entry = history.find(h => h.id === id);
+        if (!entry) return;
+
+        generateTable();
+        const inputs = document.querySelectorAll('.score-input');
+        entry.raw.forEach((item, idx) => {
+            if(inputs[idx]) {
+                inputs[idx].value = item.v;
+                if (item.a) inputs[idx].classList.add('auto-filled');
+            }
+        });
+
+        if (entry.names) {
+            document.getElementById('pName-0').value = entry.names[0];
+            document.getElementById('pName-1').value = entry.names[1];
+            document.getElementById('pName-2').value = entry.names[2];
+        }
+
+        if (entry.place) {
+            document.getElementById('gamePlace').value = entry.place;
+        }
+
+        currentEditId = entry.id;
+        calculate();
+        document.getElementById('currentDate').textContent = entry.date;
+        
+        // 設定モーダルを閉じる
+        const m = document.getElementById('settingsModal');
+        m.style.display = 'none';
+    }
 
     // --- UI Helpers ---
-    window.toggleSettings = () => {
+    function toggleSettings() {
         const m = document.getElementById('settingsModal');
-        m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
-    };
+        if (m.style.display === 'flex') {
+            m.style.display = 'none';
+        } else {
+            renderHistoryList();
+            m.style.display = 'flex';
+        }
+    }
 
-    window.updateSummary = () => {
+    function updateSummary() {
         const s = document.getElementById('startPt').value;
         const r = document.getElementById('returnPt').value;
         document.getElementById('okaDisplay').textContent = `${s}/${r}`;
-    };
-
-    // Init
-    generateTable();
-    const savedRoom = localStorage.getItem('sanma_room_id');
-    if (savedRoom) document.getElementById('roomId').value = savedRoom;
-    
-    if (firebaseConfig.apiKey !== "ここにAPIキーを貼り付け") {
-        startSync(document.getElementById('roomId').value);
-    } else {
-        console.warn("Firebase設定がまだです。コード内のfirebaseConfigを編集してください。");
     }
+
+    function showToast() {
+        const toast = document.getElementById('saving-toast');
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 1500);
+    }
+
+    function saveConfig() {
+        const config = {
+            names: [document.getElementById('pName-0').value, document.getElementById('pName-1').value, document.getElementById('pName-2').value],
+            uma: [document.getElementById('uma1').value, document.getElementById('uma2').value, document.getElementById('uma3').value],
+            oka: document.getElementById('okaVal').value,
+            startPt: document.getElementById('startPt').value,
+            returnPt: document.getElementById('returnPt').value
+        };
+        localStorage.setItem('sanma_v5_cfg', JSON.stringify(config));
+    }
+
+    function loadConfig() {
+        const s = localStorage.getItem('sanma_v5_cfg');
+        if (s) {
+            const c = JSON.parse(s);
+            if (c.names) {
+                document.getElementById('pName-0').value = c.names[0];
+                document.getElementById('pName-1').value = c.names[1];
+                document.getElementById('pName-2').value = c.names[2];
+            }
+            if (c.uma) {
+                document.getElementById('uma1').value = c.uma[0];
+                document.getElementById('uma2').value = c.uma[1];
+                document.getElementById('uma3').value = c.uma[2];
+            }
+            document.getElementById('okaVal').value = c.oka || 15;
+            document.getElementById('startPt').value = c.startPt || 35000;
+            document.getElementById('returnPt').value = c.returnPt || 40000;
+            updateSummary();
+        }
+    }
+
+    generateTable();
+    updateDate();
+    loadConfig();
 
 </script>
 </body>
 </html>
-
-
-
-
